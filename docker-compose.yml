@@ -1,0 +1,33 @@
+services:
+  agent1:
+    image: dockeragent:latest
+    volumes:
+      - ./start.sh:/azp/start.sh
+      - ./agent1/:/azp
+    env_file:
+      - .env
+    environment:
+      - AZP_AGENT_NAME=agent1-docker
+
+# On free tier, you can only have 1 self-hosted agent used at a time.
+# If you bill for additional self-hosted parallel jobs you may add more agents like the 2 below
+# See pricing here : https://azure.microsoft.com/en-us/pricing/details/devops/azure-devops-services/)
+
+#  agent2:
+#    image: dockeragent:latest
+#    volumes:
+#      - ./start.sh:/azp/start.sh
+#      - ./agent2/:/azp
+#    env_file:
+#      - .env
+#    environment:
+#      - AZP_AGENT_NAME=agent2-docker
+#  agent3:
+#    image: dockeragent:latest
+#    volumes:
+#      - ./start.sh:/azp/start.sh
+#      - ./agent3/:/azp
+#    env_file:
+#      - .env
+#    environment:
+#      - AZP_AGENT_NAME=agent3-docker
