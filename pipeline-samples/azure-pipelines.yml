@@ -1,0 +1,82 @@
+# PHP
+
+# Test and package your PHP project.
+# Add steps that run tests, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/php
+
+# Inspiration : https://github.com/michalbiarda/shipx-php-sdk/blob/cbdd3abc3a7f957afbcd2b6bd3a8e01af714b8ba/azure-pipelines.yml
+
+name: "CI php - vuejs sample"
+
+trigger:
+  - main
+
+jobs:
+  - job: 'Backoffice'
+    pool: Default
+    steps:
+      - script: cd backoffice; composer install --no-interaction --prefer-dist; cd ..
+        displayName: 'Install dependencies'
+
+      - script: mkdir -p reports/backoffice;mkdir -p reports/frontoffice
+        displayName: 'Reports: Prepare directories'
+
+      - script: ./backoffice/vendor/squizlabs/php_codesniffer/bin/phpcs --standard=PSR12 --error-severity=1 --warning-severity=8 --report-junit=$(System.DefaultWorkingDirectory)/reports/backoffice/code-sniffer-junit-report.xml --ignore=./backoffice/vendor/* ./backoffice/
+        displayName: 'Run PHP code sniffer'
+        continueOnError: true
+
+      - task: PublishTestResults@2
+        displayName: 'Publish code sniffer results'
+        continueOnError: true
+        inputs:
+          testResultsFormat: 'JUnit'
+          testResultsFiles: 'reports/backoffice/code-sniffer-junit-report.xml'
+          failTaskOnFailedTests: true
+
+      - script: cd backoffice;./vendor/phpmd/phpmd/src/bin/phpmd . --reportfile $(System.DefaultWorkingDirectory)/reports/backoffice/phpmess-xml-report.xml xml codesize,unusedcode,design --exclude vendor/;cd ..
+        displayName: 'Run PHP mess detector for basic rulesets'
+        continueOnError: true
+
+      - script: xsltproc --output $(System.DefaultWorkingDirectory)/reports/backoffice/mess-detector-junit-report.xml backoffice/phpmd/junit.xslt $(System.DefaultWorkingDirectory)/reports/backoffice/phpmess-xml-report.xml
+        displayName: 'Convert phpmess xml report to unit format'
+        continueOnError: true
+
+      - task: PublishTestResults@2
+        displayName: 'Publish php mess detector results'
+        continueOnError: true
+        inputs:
+          testResultsFormat: 'JUnit'
+          testResultsFiles: 'reports/backoffice/mess-detector-junit-report.xml'
+          failTaskOnFailedTests: true
+
+      - script: cd backoffice; phpunit --testsuite Unit --log-junit $(System.DefaultWorkingDirectory)/reports/backoffice/unit-tests-junit-report.xml
+        displayName: 'Unit Tests'
+        continueOnError: true
+
+      - task: PublishTestResults@2
+        displayName: 'Publish unit tests results'
+        continueOnError: true
+        inputs:
+          testResultsFormat: 'JUnit'
+          testResultsFiles: 'reports/backoffice/unit-tests-junit-report.xml'
+          failTaskOnFailedTests: true
+
+      - script: rm -rf $(System.DefaultWorkingDirectory)/reports
+        displayName: 'Reports: cleanup'
+        continueOnError: true
+
+  - job: Frontoffice
+    pool: Default
+    steps:
+      - task: Npm@1
+        displayName: 'Install pdf2json dependencies'
+        inputs:
+          command: 'ci'
+          verbose: true
+          workingDir: 'pdf2json'
+      - task: Npm@1
+        displayName: 'Install dependencies'
+        inputs:
+          command: 'ci'
+          verbose: true
+          workingDir: 'frontoffice'
